@@ -60,3 +60,37 @@ exports.login = catchAsync(async (req, res, next) => {
   //3)If everything ok,send token to client
   createSendToken(user, 200, res);
 });
+exports.protect = catchAsync(async (req, res, next) => {
+  let token;
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies.jwt) {
+    token = req.cookies.jwt;
+  }
+  // If the token is 'loggedout' or missing, stop processing
+  if (!token || token === 'loggedout') {
+    // Redirect for browser requests
+    if (!req.originalUrl.startsWith('/api')) {
+      return res.redirect('/login'); // Redirect to login page
+    }
+    // For API requests, send an error
+    return next(
+      new AppError('You are not logged in! Please log in to get access.', 401)
+    );
+  }
+  // Verify the token
+  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  // Check if the user still exists
+  const currentUser = await User.findById(decoded.id);
+  if (!currentUser) {
+    return next(
+      new AppError('The user belonging to this token no longer exists.', 401)
+    );
+  }
+  // Grant access to protected routes
+  req.user = currentUser;
+  next();
+});
