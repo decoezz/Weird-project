@@ -36,19 +36,29 @@ const filterObj = (obj, ...allowedFileds) => {
   return newObj;
 };
 exports.getMe = (req, res, next) => {
+  if (!req.user) {
+    return next(new AppError('User is not authenticated', 401));
+  }
+
   req.params.id = req.user.id;
   next();
 };
-
 exports.getUser = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.params.id);
-  if (!user) {
-    return next(new AppError('No User found with this id ', 404));
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return next(new AppError('No user found with that ID', 404));
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        user,
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching user:', err);
+    return next(new AppError('An error occurred while fetching the user', 500));
   }
-  res.status(200).json({
-    status: 'success',
-    data: {
-      user,
-    },
-  });
 });
