@@ -11,7 +11,6 @@ module.exports = class Email {
     this.url = url;
     this.from = `Ezz el dien Ahmed <${process.env.EMAIL_FROM}>`;
   }
-
   newTransport() {
     return nodemailer.createTransport({
       host: 'smtp-relay.brevo.com',
@@ -58,6 +57,12 @@ module.exports = class Email {
     await this.send(
       'passwordReset',
       'Your password reset token (valid for only 10 minutes)'
+    );
+  }
+  async sendVerificationEmail() {
+    await this.send(
+      'verificationEmail', // Ensure you have a corresponding HTML template named `verificationEmail.html`
+      'Your email verification link'
     );
   }
 };

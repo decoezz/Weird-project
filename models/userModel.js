@@ -118,7 +118,7 @@ const userSchema = new mongoose.Schema(
     },
     active: {
       type: Boolean,
-      default: true,
+      default: false,
       select: false,
     },
     role: {
@@ -128,18 +128,34 @@ const userSchema = new mongoose.Schema(
         values: ['user', 'admin'],
       },
     },
+    verificationToken: {
+      type: String,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+      select: false // Optional: Exclude from queries by default
+    },
   },
   {
     toJSON: { getters: true, virtuals: true }, // Apply getter when converting to JSON
     toObject: { getters: true, virtuals: true }, // Apply getter when converting to Object
   }
 );
-
+// In your Mongoose schema
+userSchema.index({ email: 1 });
 // Populate the `name` field by combining `FirstName` and `LastName`
 userSchema.pre('save', function (next) {
   this.name = `${this.FirstName} ${this.LastName}`;
   next();
 });
+userSchema.pre('save', function (next) {
+  if (this.isModified('email')) {
+    this.email = this.email.trim().toLowerCase();
+  }
+  next();
+});
+
 // Hash the password before saving it to the database
 userSchema.pre('save', async function (next) {
   // Only run this function if the password was actually modified
@@ -158,12 +174,6 @@ userSchema.pre('save', function (next) {
   if (!this.isModified('password') || this.isNew) return next();
 
   this.passwordChangedAt = Date.now() - 1000;
-  next();
-});
-
-// Hide inactive users from queries
-userSchema.pre(/^find/, function (next) {
-  this.find({ active: { $ne: false } });
   next();
 });
 
